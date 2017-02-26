@@ -24,7 +24,7 @@ namespace FileProcessor
                 });
             }
 
-            Console.Read();
+            //Console.Read();
         }
 
         static void WriteSampleFiles()
