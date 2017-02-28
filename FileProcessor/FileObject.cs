@@ -2,7 +2,7 @@
 
 namespace FileProcessor
 {
-    class FileObject : IDataObject
+    public class FileObject : IDataObject
     {
         public FileObject(DateTime creationTimeStamp, string fileName, string userId, int processingTimeInSeconds)
         {

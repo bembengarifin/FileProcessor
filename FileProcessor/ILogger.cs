@@ -1,6 +1,6 @@
 ﻿namespace FileProcessor
 {
-    interface ILogger
+    public interface ILogger
     {
         void Log(string format, params object[] msg);
     }

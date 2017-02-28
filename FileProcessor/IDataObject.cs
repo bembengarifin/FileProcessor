@@ -2,7 +2,7 @@
 
 namespace FileProcessor
 {
-    interface IDataObject
+    public interface IDataObject
     {
         DateTime CreationTimeStamp { get; }
 

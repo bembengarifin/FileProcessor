@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace FileProcessor
 {
-    class MutextLockManager<T> : ILockManager<T>
+    public class MutextLockManager<T> : ILockManager<T>
     {
         private readonly ILogger _logger;
         public MutextLockManager(ILogger logger)

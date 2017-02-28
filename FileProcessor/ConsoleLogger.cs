@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace FileProcessor
 {
-    class ConsoleLogger : ILogger
+    public class ConsoleLogger : ILogger
     {
         public void Log(string format, params object[] msg)
         {

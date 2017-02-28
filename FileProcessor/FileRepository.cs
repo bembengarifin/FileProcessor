@@ -5,7 +5,7 @@ using System.IO;
 
 namespace FileProcessor
 {
-    class FileRepository : IDataRepository<FileObject>
+    public class FileRepository : IDataRepository<FileObject>
     {
         private readonly DirectoryInfo _directoryInfo;
         public FileRepository(string directoryPath)
