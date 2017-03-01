@@ -2,8 +2,8 @@
 
 namespace FileProcessor
 {
-    public interface ILockManager<T>
+    public interface ILockManager
     {
-        Boolean TryLockAndGet(string lockKey, Func<T> get, int msTimeout, out T output);
+        Boolean TryLockAndGet<T>(string lockKey, int msTimeout, Func<T> get, out T output);
     }
 }

@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace FileProcessor
 {
-    public class MutextLockManager<T> : ILockManager<T>
+    public class MutextLockManager : ILockManager
     {
         private readonly ILogger _logger;
         public MutextLockManager(ILogger logger)
@@ -11,7 +11,12 @@ namespace FileProcessor
             _logger = logger;
         }
 
-        public bool TryLockAndGet(string lockKey, Func<T> get, int msTimeout, out T output)
+        public bool TryLock(string lockKey, int msTimeout)
+        {
+            return TryLockAndGet(lockKey, msTimeout, null, out string dummy);
+        }
+
+        public bool TryLockAndGet<T>(string lockKey, int msTimeout, Func<T> get, out T output)
         {
             Mutex m = null;
             output = default(T);
@@ -19,10 +24,13 @@ namespace FileProcessor
             {
                 m = new Mutex(false, "Global\\" + lockKey);
                 _logger.Log("Waiting for a turn");
-                if (m.WaitOne(1000))
+                if (m.WaitOne(msTimeout))
                 {
-                    _logger.Log("Got the lock, working on something now");
-                    output = get();
+                    if (get != null)
+                    {
+                        _logger.Log("Got the lock, working on something now");
+                        output = get();
+                    }
 
                     _logger.Log("Done, releasing the lock");
                     m?.ReleaseMutex();
