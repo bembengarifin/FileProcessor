@@ -10,110 +10,200 @@ namespace FileProcessor.Tests
     [TestClass]
     [Story(
         AsA = "As a Lock Manager",
-        IWant = "I want to be able to create a lock",
-        SoThat = "So that the synchronization is in place for concurrent processing")]
-    public class Lock_With_Mutex
+        IWant = "I want to be able to create a lock then perform some retrieval",
+        SoThat = "So that the synchronization is in place for concurrent retrieval")]
+    public abstract class Lock_And_Get
     {
-        [TestMethod]
-        public void Lock_Is_Successful_Test()
-        {
-            new Lock_Is_Successful().BDDfy<Lock_With_Mutex>();
-        }
+        protected MutextLockManager _lockManager;
+        protected Boolean _lockResult;
+        protected string _lockKey;
+        protected Func<string> _get;
+        protected string _dummyGetOutput;
+        protected string _actualOutput;
 
         [TestMethod]
-        public void Lock_Is_Already_Held_By_Other_And_Longer_Than_Timeout_Test()
+        public void ExecuteTestScenario()
         {
-            new Lock_Is_Already_Held_By_Other_And_Longer_Than_Timeout().BDDfy<Lock_With_Mutex>();
+            this.BDDfy<Lock_And_Get>(this.GetType().Name.Replace("_", " "));
         }
 
-        [TestMethod]
-        public void Lock_Is_Already_Held_By_Other_And_Shorter_Than_Timeout_Test()
-        {
-            new Lock_Is_Already_Held_By_Other_And_Shorter_Than_Timeout().BDDfy<Lock_With_Mutex>();
-        }
-    }
-
-    class Lock_Is_Successful
-    {
-        private MutextLockManager _lockManager;
-        private Boolean _lockResult;
-
-        void Given_Lock_Is_Available()
+        [TestInitialize]
+        public void Setup()
         {
             _lockManager = new MutextLockManager(Moq.Mock.Of<ILogger>());
-        }
-
-        void When_Lock_Is_Attempted()
-        {
-            _lockResult = _lockManager.TryLock("abc", 10);
-        }
-
-        void Then_Return_Value_Should_Be_True()
-        {
-            Assert.IsTrue(_lockResult);
-        }
-    }
-
-    class Lock_Is_Already_Held_By_Other_And_Longer_Than_Timeout
-    {
-        private MutextLockManager _lockManager;
-        private Boolean _lockResult;
-        private Mutex _otherMutex;
-
-        void Given_Lock_Is_Already_Held_By_Other_Process()
-        {
-            _lockManager = new MutextLockManager(Moq.Mock.Of<ILogger>());
-
-            var t = new Thread(new ThreadStart(() =>
-            {
-                _otherMutex = new Mutex(false, "Global\\abc");
-                _otherMutex.WaitOne();
-                Thread.Sleep(3000);
-                _otherMutex.ReleaseMutex();
-            }));
-            t.Start();
+            _lockKey = Guid.NewGuid().ToString();
+            _dummyGetOutput = "GetOutput";
+            _get = () => { return _dummyGetOutput; };
+            _actualOutput = null;
         }
         
-        void When_Lock_Is_Attempted()
-        {
-            Thread.Sleep(1000);
-            _lockResult = _lockManager.TryLock("abc", 100);
+        [TestClass]
+        public class Lock_Is_Not_Held_By_Any_Other_Process : Lock_And_Get
+        {   
+            public void Given_Lock_Is_Available()
+            {   
+            }
+
+            public void When_Lock_And_Get_Is_Attempted()
+            {
+                _lockResult = _lockManager.TryLockAndGet(_lockKey, 10, _get, out _actualOutput);
+            }
+
+            public void Then_Returned_Result_Should_Be_True()
+            {
+                Assert.IsTrue(_lockResult);
+            }
+
+            public void Then_Output_Should_Be_Returned()
+            {
+                Assert.AreEqual(_dummyGetOutput, _actualOutput);
+            }
         }
 
-        void Then_Return_Value_Should_Be_False()
+        [TestClass]
+        public class Lock_Is_Already_Held_By_Other_And_Longer_Than_Timeout : Lock_And_Get
         {
-            Assert.IsFalse(_lockResult);
+            private Mutex _otherMutex;
+
+            public void Given_Lock_Is_Already_Held_By_Other_Process()
+            {
+                _lockManager = new MutextLockManager(Moq.Mock.Of<ILogger>());
+
+                var t = new Thread(new ThreadStart(() =>
+                {
+                    _otherMutex = new Mutex(false, "Global\\" + _lockKey);
+                    _otherMutex.WaitOne();
+                    Thread.Sleep(3000);
+                    _otherMutex.ReleaseMutex();
+                }));
+                t.Start();
+            }
+
+            public void When_Lock_And_Get_Is_Attempted()
+            {
+                Thread.Sleep(1000); // delay so the the other thread will run first
+                _lockResult = _lockManager.TryLockAndGet(_lockKey, 10, _get, out _actualOutput);
+            }
+
+            public void Then_Returned_Result_Should_Be_False()
+            {
+                Assert.IsFalse(_lockResult);
+            }
+
+            public void Then_Output_Should_Be_Null()
+            {
+                Assert.IsNull(_actualOutput);
+            }
+        }
+
+        [TestClass]
+        public class Lock_Is_Already_Held_By_Other_And_Shorter_Than_Timeout : Lock_And_Get
+        {
+            private Mutex _otherMutex;
+
+            public void Given_Lock_Is_Already_Held_By_Other_Process_And_Shorter_Than_Timeout()
+            {
+                _lockManager = new MutextLockManager(Moq.Mock.Of<ILogger>());
+
+                var t = new Thread(new ThreadStart(() =>
+                {
+                    _otherMutex = new Mutex(false, "Global\\" + _lockKey);
+                    _otherMutex.WaitOne();
+                    Thread.Sleep(3000);
+                    _otherMutex.ReleaseMutex();
+                }));
+                t.Start();
+            }
+
+            public void When_Lock_And_Get_Is_Attempted()
+            {
+                Thread.Sleep(1000); 
+                _lockResult = _lockManager.TryLockAndGet(_lockKey, 4000, _get, out _actualOutput);
+            }
+
+            public void Then_Returned_Result_Should_Be_True()
+            {
+                Assert.IsTrue(_lockResult);
+            }
+
+            public void Then_Output_Should_Be_Returned()
+            {
+                Assert.AreEqual(_dummyGetOutput, _actualOutput);
+            }
         }
     }
 
-    class Lock_Is_Already_Held_By_Other_And_Shorter_Than_Timeout
+    [TestClass]
+    [Story(
+            AsA = "As a Lock Manager",
+            IWant = "I want to be able to check any lock exists",
+            SoThat = "So that the caller can make decision on further synchronization")]
+    public abstract class Check_If_Lock_Exists
     {
-        private MutextLockManager _lockManager;
-        private Boolean _lockResult;
-        private Mutex _otherMutex;
+        protected MutextLockManager _lockManager;
+        protected Boolean _lockResult;
+        protected string _lockKey;
+        
+        [TestMethod]
+        public void ExecuteTestScenario()
+        {
+            this.BDDfy<Check_If_Lock_Exists>(this.GetType().Name.Replace("_", " "));
+        }
 
-        void Given_Lock_Is_Already_Held_By_Other_Process_And_Shorter_Than_Timeout()
+        [TestInitialize]
+        public void Setup()
         {
             _lockManager = new MutextLockManager(Moq.Mock.Of<ILogger>());
+            _lockKey = Guid.NewGuid().ToString();
+        }
 
-            var t = new Thread(new ThreadStart(() =>
+        [TestClass]
+        public class Lock_Is_Not_Held_By_Any_Other_Process : Check_If_Lock_Exists
+        {
+            public void Given_Lock_Is_Available()
             {
-                _otherMutex = new Mutex(false, "Global\\def");
-                _otherMutex.WaitOne();
-                Thread.Sleep(100);
-                _otherMutex.ReleaseMutex();
-            }));
-            t.Start();
+            }
+
+            public void When_Check_Lock_Is_Called()
+            {
+                _lockResult = _lockManager.CheckIfLockExists(_lockKey);
+            }
+
+            public void Then_Returned_Result_Should_Be_False()
+            {
+                Assert.IsFalse(_lockResult);
+            }
         }
 
-        void When_Lock_Is_Attempted()
+        [TestClass]
+        public class Lock_Is_Already_Held_By_Other : Check_If_Lock_Exists
         {
-            _lockResult = _lockManager.TryLock("def", 500);
-        }
+            private Mutex _otherMutex;
 
-        void Then_Return_Value_Should_Be_True()
-        {
-            Assert.IsTrue(_lockResult);
+            public void Given_Lock_Is_Already_Held_By_Other_Process()
+            {
+                _lockManager = new MutextLockManager(Moq.Mock.Of<ILogger>());
+
+                var t = new Thread(new ThreadStart(() =>
+                {
+                    _otherMutex = new Mutex(false, "Global\\" + _lockKey);
+                    _otherMutex.WaitOne();
+                    Thread.Sleep(3000);
+                    _otherMutex.ReleaseMutex();
+                }));
+                t.Start();
+            }
+
+            public void When_Check_Lock_Is_Called()
+            {
+                Thread.Sleep(1000); // delay so the the other thread will run first
+                _lockResult = _lockManager.CheckIfLockExists(_lockKey);
+            }
+
+            public void Then_Returned_Result_Should_Be_True()
+            {
+                Assert.IsTrue(_lockResult);
+            }
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using System.Threading;
+﻿using System;
+using System.Collections.Generic;
+using System.Threading;
 
 namespace FileProcessor
 {
@@ -6,31 +8,42 @@ namespace FileProcessor
     {
         private readonly ILogger _logger;
         private readonly IDataRepository<IDataObject> _dataRepository;
-        public Processor(ILogger logger, IDataRepository<IDataObject> dataRepository)
+        private readonly ILockManager _lockManager;
+        private readonly string _getFileLockKey;
+        private readonly int _lockMsTimeout;
+        private readonly int _itemsToFetchAtATime;
+
+        public Processor(ILogger logger, 
+                        IDataRepository<IDataObject> dataRepository, 
+                        ILockManager lockManager, 
+                        string getFileLockKey, 
+                        int lockMsTimeout, 
+                        int itemsToFetchAtATime)
         {
             _logger = logger;
             _dataRepository = dataRepository;
+            _lockManager = lockManager;
+            _getFileLockKey = getFileLockKey;
+            _lockMsTimeout = lockMsTimeout;
+            _itemsToFetchAtATime = itemsToFetchAtATime;
         }
 
         public void RunProcess()
         {
-            var fileInfo = _dataRepository.GetNextItemsToProcess(10);
-
-            if (fileInfo != null)
+            if (_lockManager.TryLockAndGet(_getFileLockKey, 
+                                            _lockMsTimeout,
+                                            () => _dataRepository.GetNextItemsToProcess(_itemsToFetchAtATime), 
+                                            out IEnumerable<IDataObject> itemsToProcess))
             {
-                //_logger.Log("{0} - Start processing for {1} sec processing", fileInfo.Name, processingTime);
-                //Thread.Sleep(processingTime * 1000);
+                // process
+                foreach (var item in itemsToProcess)
+                {
+                    _logger.Log(item.ToString());
+                }
 
-                //fileInfo.Delete();
-                //_logger.Log("{0} - Completed processing", fileInfo.Name);
+                // clean up
+                _dataRepository.DisposeItems(itemsToProcess);
             }
-            else
-            {
-                _logger.Log("Sleeping for 3 seconds, then try to get file again");
-                Thread.Sleep(3000);
-            }
-
-            
         }
     }
 }

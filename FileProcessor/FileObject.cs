@@ -22,7 +22,7 @@ namespace FileProcessor
 
         public override string ToString()
         {
-            return string.Format("{0},{1},{2},{3}s", CreationTimeStamp, FileName, UserId, ProcessingTimeInSeconds);
+            return string.Format("File Name:{0}", FileName);
         }
     }
 }

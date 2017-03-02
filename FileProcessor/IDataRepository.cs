@@ -3,7 +3,8 @@
 namespace FileProcessor
 {
     public interface IDataRepository<T> where T : IDataObject
-    {
+    {   
         IEnumerable<T> GetNextItemsToProcess(int maxNumberOfItems);
+        void DisposeItems(IEnumerable<T> itemsToDispose);
     }
 }

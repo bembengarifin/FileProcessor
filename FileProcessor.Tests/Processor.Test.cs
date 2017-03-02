@@ -3,42 +3,24 @@ using Moq;
 using TestStack.BDDfy;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TestStack.BDDfy.Configuration;
+using System.Collections.Generic;
 
 namespace FileProcessor.Tests
 {
     [TestClass]
     [Story(
         AsA = "As a File Processor Instance",
-        IWant = "I want to ensure I'm the only one picking up items",
+        IWant = "I want to retrieve files",
         SoThat = "So that there is no race condition where multiple file processors are picking up same files")]
-    public class File_Processor_Processes_Items
+    public abstract class File_Processor_Processes_Items 
     {
-        // Test Runners
-        [TestMethod]
-        public void Lock_Is_Available_Immediately_Test()
-        {
-            new Lock_Is_Available_Immediately().BDDfy<File_Processor_Processes_Items>();
-        }
-
-        [TestMethod]
-        public void Lock_Is_Not_Available_Test()
-        {
-            new Lock_Is_Not_Available().BDDfy<File_Processor_Processes_Items>();
-        }
-
-        [TestMethod]
-        public void Lock_Is_Not_Available_Immediately_But_Then_Available_Test()
-        {
-            this.Given(() => Console.WriteLine("test"), "Given_The_Lock_Is_Not_Available_Immediately")
-                .When(() => _processor.RunProcess(), "When_The_Run_Process_Is_Executed")
-                .Then(() => Console.WriteLine("verify"), "Then_Items_Should_Be_Returned_For_Further_Processing")
-                .BDDfy();
-        }
-
         protected Processor _processor;
         protected Mock<IDataRepository<IDataObject>> _mockedDataRepo;
         protected Mock<ILogger> _mockedLogger;
         protected Mock<ILockManager> _mockedLockManager;
+        private string _getFileLockKey;
+        private int _lockMsTimeout;
+        private int _itemsToFetchAtATime;
 
         [TestInitialize]
         public void Setup()
@@ -46,57 +28,73 @@ namespace FileProcessor.Tests
             _mockedLogger = new Mock<ILogger>();
             _mockedDataRepo = new Mock<IDataRepository<IDataObject>>();
             _mockedLockManager = new Mock<ILockManager>();
-            _processor = new Processor(_mockedLogger.Object, _mockedDataRepo.Object);
+            _getFileLockKey = "PROCESSORGETLOCK";
+            _lockMsTimeout = 1000;
+            _itemsToFetchAtATime = 20;
+            _processor = new Processor(_mockedLogger.Object, _mockedDataRepo.Object, _mockedLockManager.Object, _getFileLockKey, _lockMsTimeout, _itemsToFetchAtATime);
         }
-        
-        class Lock_Is_Available_Immediately : File_Processor_Processes_Items
+
+        [TestMethod]
+        public void ExecuteTestScenario()
         {
-            void Given_Lock_Is_Not_Being_Held_By_Any_Other_Process()
+            this.BDDfy<File_Processor_Processes_Items>(this.GetType().Name.Replace("_", " "));
+        }
+
+        [TestClass]
+        public class Lock_Is_Available_Immediately : File_Processor_Processes_Items
+        {
+            public void Given_Lock_Is_Not_Being_Held_By_Any_Other_Process()
             {
+                _mockedDataRepo.Setup(x => x.GetNextItemsToProcess(_itemsToFetchAtATime));
+
+                IEnumerable<IDataObject> result;
+                Func<IEnumerable<IDataObject>> get = () => _mockedDataRepo.Object.GetNextItemsToProcess(_itemsToFetchAtATime);
+                _mockedLockManager.Setup(x => x.TryLockAndGet(_getFileLockKey, _lockMsTimeout, get, out result)).Returns(true);
             }
 
-            void When_The_Run_Process_Is_Executed()
+            public void When_The_Run_Process_Is_Executed()
             {
                 _processor.RunProcess();
             }
 
-            void Then_Items_Should_Be_Returned_For_Further_Processing()
-            {
-                _mockedDataRepo.Verify(x => x.GetNextItemsToProcess(10));
-            }
-
-            void And_Lock_Should_Be_Released_Back()
+            public void Then_Lock_Manager_Was_Called()
             {
                 _mockedLockManager.Verify();
             }
+
+            public void And_Data_Should_Be_Retrieved_For_Further_Processing()
+            {
+                _mockedDataRepo.Verify();
+            }
         }
 
-        class Lock_Is_Not_Available : File_Processor_Processes_Items
+        [TestClass]
+        public class Lock_Is_Not_Available : File_Processor_Processes_Items
         {
-            void Given_Lock_Is_Being_Held_By_Other_Process()
+            public void Given_Lock_Is_Being_Held_By_Other_Process()
             {
+                IEnumerable<IDataObject> result;
+                Func<IEnumerable<IDataObject>> get = () => _mockedDataRepo.Object.GetNextItemsToProcess(_itemsToFetchAtATime);
+                _mockedLockManager.Setup(x => x.TryLockAndGet(_getFileLockKey, _lockMsTimeout, get, out result)).Returns(false);
             }
-
-            void And_Given_It_Is_Not_Released_Before_Time_Out()
-            {
-
-            }
-
-            void When_The_Run_Process_Is_Executed()
+            
+            public void When_The_Run_Process_Is_Executed()
             {
                 _processor.RunProcess();
             }
 
-            void Then_No_Item_Should_Be_Returned_For_Further_Processing()
+            public void Then_Lock_Manager_Was_Called()
             {
-                _mockedDataRepo.Verify(x => x.GetNextItemsToProcess(10));
+                _mockedLockManager.Verify();
             }
 
-            public void And_Lock_Should_Be_Released_Back()
+            public void And_No_Data_Should_Be_Retrieved_For_Further_Processing()
             {
-
+                _mockedDataRepo.Verify(x => x.GetNextItemsToProcess(_itemsToFetchAtATime), Times.Never);
             }
         }
+
+        
     }
 
 
