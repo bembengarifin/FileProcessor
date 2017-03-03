@@ -6,7 +6,9 @@ namespace FileProcessor
     {
         DateTime CreationTimeStamp { get; }
 
-        string FileName { get; }
+        string Name { get; }
+
+        string FullName { get; }
 
         string UserId { get; }
 

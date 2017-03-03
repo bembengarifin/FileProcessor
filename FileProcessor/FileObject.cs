@@ -4,17 +4,20 @@ namespace FileProcessor
 {
     public class FileObject : IDataObject
     {
-        public FileObject(DateTime creationTimeStamp, string fileName, string userId, int processingTimeInSeconds)
+        public FileObject(DateTime creationTimeStamp, string name, string fullName, string userId, int processingTimeInSeconds)
         {
             CreationTimeStamp = creationTimeStamp;
-            FileName = fileName;
+            Name = name;
+            FullName = fullName;
             UserId = userId;
             ProcessingTimeInSeconds = processingTimeInSeconds;
         }
 
         public DateTime CreationTimeStamp { get; private set; }
 
-        public string FileName { get; private set; }
+        public string Name { get; private set; }
+
+        public string FullName { get; private set; }
 
         public string UserId { get; private set; }
 
@@ -22,7 +25,7 @@ namespace FileProcessor
 
         public override string ToString()
         {
-            return string.Format("File Name:{0}", FileName);
+            return string.Format("File Name:{0}", Name);
         }
     }
 }

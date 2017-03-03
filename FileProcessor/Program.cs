@@ -14,13 +14,13 @@ namespace FileProcessor
             // these can come from args or config files
             var inputFilesDirectoryPath = "InputFiles";
             var getFileLockKey = "PROCESSORGETLOCK";
-            var lockMsTimeout = 1000;
+            var lockMsTimeout = 5000;
             var itemsToFetchAtATime = 5;
-            var milliSecondsBreakBetweenProcessing = 2000;
+            var milliSecondsBreakBetweenProcessing = 0;
 
             // build dependencies
             var logger = new ConsoleLogger();
-            var repository = new FileRepository(inputFilesDirectoryPath);
+            var repository = new FileRepository(logger, inputFilesDirectoryPath);
             var lockManager = new MutextLockManager(logger);
             var processor = new Processor(logger, repository, lockManager, getFileLockKey, lockMsTimeout, itemsToFetchAtATime);
 
@@ -29,8 +29,11 @@ namespace FileProcessor
             {
                 processor.RunProcess();
 
-                logger.Log("Taking a {0} seconds break before processing again", milliSecondsBreakBetweenProcessing);
-                Thread.Sleep(milliSecondsBreakBetweenProcessing);
+                if (milliSecondsBreakBetweenProcessing > 0)
+                {
+                    logger.Log("Taking a {0} seconds break before processing again", milliSecondsBreakBetweenProcessing);
+                    Thread.Sleep(milliSecondsBreakBetweenProcessing);
+                }
             }
         }
 

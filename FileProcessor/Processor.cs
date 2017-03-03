@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace FileProcessor
@@ -13,11 +14,11 @@ namespace FileProcessor
         private readonly int _lockMsTimeout;
         private readonly int _itemsToFetchAtATime;
 
-        public Processor(ILogger logger, 
-                        IDataRepository<IDataObject> dataRepository, 
-                        ILockManager lockManager, 
-                        string getFileLockKey, 
-                        int lockMsTimeout, 
+        public Processor(ILogger logger,
+                        IDataRepository<IDataObject> dataRepository,
+                        ILockManager lockManager,
+                        string getFileLockKey,
+                        int lockMsTimeout,
                         int itemsToFetchAtATime)
         {
             _logger = logger;
@@ -30,19 +31,27 @@ namespace FileProcessor
 
         public void RunProcess()
         {
-            if (_lockManager.TryLockAndGet(_getFileLockKey, 
-                                            _lockMsTimeout,
-                                            () => _dataRepository.GetNextItemsToProcess(_itemsToFetchAtATime), 
-                                            out IEnumerable<IDataObject> itemsToProcess))
+            if (_lockManager.TryLockAndGet(lockKey: _getFileLockKey,
+                                            msTimeout: _lockMsTimeout,
+                                            get: () => _dataRepository.GetNextItemsToProcess(_itemsToFetchAtATime),
+                                            output: out IEnumerable<IDataObject> itemsToProcess))
             {
-                // process
-                foreach (var item in itemsToProcess)
+                if (itemsToProcess.Any())
                 {
-                    _logger.Log(item.ToString());
-                }
+                    // materialize the items
+                    var items = itemsToProcess.ToList();
 
-                // clean up
-                _dataRepository.DisposeItems(itemsToProcess);
+                    // process
+                    foreach (var item in items)
+                    {
+                        _logger.Log(item.ToString());
+                    }
+                    //Thread.Sleep(3000); // simulate some work
+
+                    // clean up
+                    _logger.Log("Finished processing, removing the data");
+                    _dataRepository.DisposeItems(items);
+                }
             }
         }
     }

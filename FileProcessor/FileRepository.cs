@@ -7,10 +7,12 @@ namespace FileProcessor
 {
     public class FileRepository : IDataRepository<IDataObject> 
     {
+        private readonly ILogger _logger;
         private readonly DirectoryInfo _directoryInfo;
-
-        public FileRepository(string directoryPath)
+        
+        public FileRepository(ILogger logger, string directoryPath)
         {
+            _logger = logger;
             _directoryInfo = new DirectoryInfo(directoryPath);
         }
         
@@ -26,14 +28,14 @@ namespace FileProcessor
                         counter++;
                         return true;
                     })
-                    .Select(f => new FileObject(f.CreationTime, f.Name, null, 0));
+                    .Select(f => new FileObject(f.CreationTime, f.Name, f.FullName, null, 0));
         }
 
         public void DisposeItems(IEnumerable<IDataObject> itemsToDispose)
         {
             foreach (var item in itemsToDispose)
-            {   
-                File.Delete(Path.Combine(_directoryInfo.FullName, item.FileName) + ".processing");
+            {
+                File.Delete(item.FullName);
             }
         }
     }
