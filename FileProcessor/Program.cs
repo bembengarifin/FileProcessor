@@ -16,7 +16,7 @@ namespace FileProcessor
             var getFileLockKey = "PROCESSORGETLOCK";
             var lockMsTimeout = 5000;
             var itemsToFetchAtATime = 5;
-            var milliSecondsBreakBetweenProcessing = 0;
+            var milliSecondsBreakBetweenProcessing = 10000;
 
             // build dependencies
             var logger = new ConsoleLogger();

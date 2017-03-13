@@ -12,7 +12,7 @@ namespace FileProcessor.Tests
         AsA = "As a File Processor Instance",
         IWant = "I want to retrieve files",
         SoThat = "So that there is no race condition where multiple file processors are picking up same files")]
-    public abstract class File_Processor_Processes_Items 
+    public abstract class File_Processor_Processes_Items
     {
         protected Processor _processor;
         protected Mock<IDataRepository<IDataObject>> _mockedDataRepo;
@@ -37,6 +37,7 @@ namespace FileProcessor.Tests
         [TestMethod]
         public void ExecuteTestScenario()
         {
+            // the generic type is passed to explicitly bind the story to the base type
             this.BDDfy<File_Processor_Processes_Items>(this.GetType().Name.Replace("_", " "));
         }
 
@@ -77,7 +78,7 @@ namespace FileProcessor.Tests
                 Func<IEnumerable<IDataObject>> get = () => _mockedDataRepo.Object.GetNextItemsToProcess(_itemsToFetchAtATime);
                 _mockedLockManager.Setup(x => x.TryLockAndGet(_getFileLockKey, _lockMsTimeout, get, out result)).Returns(false);
             }
-            
+
             public void When_The_Run_Process_Is_Executed()
             {
                 _processor.RunProcess();
@@ -94,7 +95,7 @@ namespace FileProcessor.Tests
             }
         }
 
-        
+
     }
 
 

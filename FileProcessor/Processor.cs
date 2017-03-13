@@ -31,6 +31,7 @@ namespace FileProcessor
 
         public void RunProcess()
         {
+            // this operation will perform lock, get, release lock in one go
             if (_lockManager.TryLockAndGet(lockKey: _getFileLockKey,
                                             msTimeout: _lockMsTimeout,
                                             get: () => _dataRepository.GetNextItemsToProcess(_itemsToFetchAtATime),
